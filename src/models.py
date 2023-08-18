@@ -5,9 +5,11 @@ from typing import List
 
 class ROM:
     """Used to hold a details about a single ROM"""
-    def __init__(self, Name: str, URI: str, Console: str = ''):
+    def __init__(self, Name: str, URI: str, Region: str = '', Version: str = '', Console: str = ''):
         self.Name = Name
         self.URI = URI
+        self.Region = Region
+        self.Version = Version
         self.Console = Console
 
 

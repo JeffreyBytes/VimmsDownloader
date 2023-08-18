@@ -46,16 +46,28 @@ def get_section_of_roms(section: str) -> List[models.ROM]:
         page: Response = requests.get('https://vimm.net/vault/' + section)
         soup = BeautifulSoup(page.content, 'html.parser')
         table = soup.find('table', {'class': 'rounded centered cellpadding1 hovertable striped'})
-        rows = table.select('tr')
+        rows = table.find_all('tr')
 
-        for row in rows:
-            title_link = row.select_one('td[style="width:auto"] > a[href*="/vault/"]')
+        for row in rows[1:]:
+            cols = row.find_all('td')
 
-            if title_link:
-                rom_title = title_link.text
+            if len(cols) >= 4:
+                title_link = cols[0].find('a', href=True)
+                rom_title = title_link.text.strip()
                 rom_uri = title_link['href']
 
-                rom = models.ROM(rom_title, rom_uri)
+                # check if rom has modifier (prototype, unlicensed, etc.)
+                modifier_tag = cols[0].find('b', class_='redBorder')
+                if modifier_tag:
+                    modifier_text = modifier_tag.get('title')
+                    rom_title = f'{rom_title} ({modifier_text})'
+
+                region_img = cols[1].find('img', class_='flag')
+                rom_region = region_img.get('title', 'Unknown').strip()
+
+                rom_version = cols[2].text.strip()
+
+                rom = models.ROM(rom_title, rom_uri, rom_region, rom_version)
                 roms.append(rom)
     except:
         e = sys.exc_info()[0]
@@ -185,16 +197,28 @@ def get_system_search_section(
         page = requests.get(helpers.get_search_url(search_selection))
         soup: BeautifulSoup = BeautifulSoup(page.content, 'html.parser')
         table = soup.find('table', {'class': 'rounded centered cellpadding1 hovertable striped'})
-        rows = table.select('tr')
+        rows = table.find_all('tr')
 
-        for row in rows:
-            title_link = row.select_one('td[style="width:auto"] > a[href*="/vault/"]')
+        for row in rows[1:]:
+            cols = row.find_all('td')
 
-            if title_link:
-                rom_title = title_link.text
+            if len(cols) >= 4:
+                title_link = cols[0].find('a', href=True)
+                rom_title = title_link.text.strip()
                 rom_uri = title_link['href']
 
-                rom = models.ROM(rom_title, rom_uri)
+                # check if rom has modifier (prototype, unlicensed, etc.)
+                modifier_tag = cols[0].find('b', class_='redBorder')
+                if modifier_tag:
+                    modifier_text = modifier_tag.get('title')
+                    rom_title = f'{rom_title} ({modifier_text})'
+
+                region_img = cols[1].find('img', class_='flag')
+                rom_region = region_img.get('title', 'Unknown').strip()
+
+                rom_version = cols[2].text.strip()
+
+                rom = models.ROM(rom_title, rom_uri, rom_region, rom_version)
                 roms.append(rom)
     except BaseException:
         e = sys.exc_info()[0]
@@ -213,16 +237,28 @@ def get_general_search_section(
         table = soup.find('table', {'class': 'rounded centered cellpadding1 hovertable striped'})
         rows = table.find_all('tr')
 
-        for row in rows[1:]: # skip the header row
+        for row in rows[1:]:  # skip the header row
             cols = row.find_all('td')
 
             if len(cols) >= 4:
                 rom_platform = cols[0].text.strip()
+
                 title_link = cols[1].find('a', href=True)
-                rom_title= title_link.text.strip()
+                rom_title = title_link.text.strip()
                 rom_uri = title_link['href']
 
-                rom = models.ROM(rom_title, rom_uri, rom_platform)
+                # check if rom has modifier (prototype, unlicensed, etc.)
+                modifier_tag = cols[1].find('b', class_='redBorder')
+                if modifier_tag:
+                    modifier_text = modifier_tag.get('title')
+                    rom_title = f'{rom_title} ({modifier_text})'
+
+                region_img = cols[2].find('img', class_='flag')
+                rom_region = region_img.get('title', 'Unknown').strip()
+
+                rom_version = cols[3].text.strip()
+
+                rom = models.ROM(rom_title, rom_uri, rom_region, rom_version, rom_platform)
                 roms.append(rom)
     except BaseException:
         e = sys.exc_info()[0]
@@ -309,12 +345,12 @@ def get_extraction_status(config: models.Config) -> models.Config:
 
 def print_general_search(roms: List[models.ROM]):
     table = PrettyTable()
-    table.field_names = ["Selection Number", "System", "ROM"]
+    table.field_names = ["Selection Number", "System", "ROM", "Region", "Version"]
     count = 0
     print(
         "\nSelect which roms you would like to download and then enter 'd'\n")
     for x in roms:
-        table.add_row([count, x.Console, x.Name])
+        table.add_row([count, x.Console, x.Name, x.Region, x.Version])
         count += 1
     table.align = "l"
     table.right_padding_width = 0
@@ -324,12 +360,12 @@ def print_general_search(roms: List[models.ROM]):
 def print_system_search(roms: List[models.ROM]):
     """Prints the results from a system search"""
     table = PrettyTable()
-    table.field_names = ["Selection Number", "ROM"]
+    table.field_names = ["Selection Number", "ROM", "Region", "Version"]
     count: int = 0
     print(
         '\nSelect which roms you would like to download and then enter \'d\'')
     for x in roms:
-        table.add_row([count, x.Name])
+        table.add_row([count, x.Name, x.Region, x.Version])
         count += 1
     table.align = "l"
     table.right_padding_width = 0
