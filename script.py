@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 from src.helpers import models
 from src import helpers
-
+from tqdm import tqdm
 
 def get_rom_download_url(url: str) -> str:
     """Gets the Download ID for the a specific ROM from the ROMs page url"""
@@ -97,8 +97,10 @@ def get_all_system_roms(system: str) -> models.BulkSystemROMS:
 def download_file(page_url: str, download_url: str, path: str) -> str:
     """Downloads one rom from the uri, downloadid\
             downloads to the path director"""
+
     x: int = 0
     filename: str = ''
+
     while True:
         headers: dict[str, str] = {
             'Accept':
@@ -113,16 +115,28 @@ def download_file(page_url: str, download_url: str, path: str) -> str:
             'Referer':
             f'https://vimm.net/vault{page_url}'
         }
+
         file: Response = requests.get(
             f'{helpers.get_download_url_with_random_server_number()}/download/?mediaId={download_url}',
             headers=headers,
-            allow_redirects=True)
+            allow_redirects=True,
+            stream=True)
+
         if file.status_code == 200:
             filename = file.headers['Content-Disposition']
             filenames: List[str] = re.findall(r'"([^"]*)"', filename)
             filename = filenames[0]
             full_path = os.path.join(path, filename)
-            open(full_path, 'wb').write(file.content)
+
+            total_size = int(file.headers.get('content-length', 0))
+            with open(full_path, 'wb') as f, tqdm(
+                total=total_size, unit='B', unit_scale=True, unit_divisor=1024
+            ) as pbar:
+                for chunk in file.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        pbar.update(len(chunk))
+
             print('Downloaded ' + filename + '!')
             break
         if x == 4:
