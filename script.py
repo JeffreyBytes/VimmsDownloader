@@ -45,31 +45,18 @@ def get_section_of_roms(section: str) -> List[models.ROM]:
     try:
         page: Response = requests.get('https://vimm.net/vault/' + section)
         soup = BeautifulSoup(page.content, 'html.parser')
-        result = soup.find(
-            'table', {'class': 'rounded centered cellpadding1 hovertable'})
-        for j in result.contents:
-            if j != '\n':
-                new_soup = BeautifulSoup(str(j), 'html.parser')
-                odd = new_soup.find(attrs={'class': 'odd'})
-                even = new_soup.find(attrs={'class': 'even'})
-                if odd is not None:
-                    result_soup = BeautifulSoup(str(odd.contents[0]),
-                                                'html.parser')
-                    result = result_soup.find('a', href=True)
-                    name = result.contents[0]
-                    result = result['href']
-                    rom = models.ROM(name, result)
-                    roms.append(rom)
-                    odd = None
-                if even is not None:
-                    result_soup = BeautifulSoup(str(even.contents[0]),
-                                                'html.parser')
-                    result = result_soup.find('a', href=True)
-                    name = result.contents[0]
-                    result = result['href']
-                    rom = models.ROM(name, result)
-                    roms.append(rom)
-                    even = None
+        table = soup.find('table', {'class': 'rounded centered cellpadding1 hovertable striped'})
+        rows = table.select('tr')
+
+        for row in rows:
+            title_link = row.select_one('td[style="width:auto"] > a[href*="/vault/"]')
+
+            if title_link:
+                rom_title = title_link.text
+                rom_uri = title_link['href']
+
+                rom = models.ROM(rom_title, rom_uri)
+                roms.append(rom)
     except:
         e = sys.exc_info()[0]
     return roms
@@ -183,31 +170,18 @@ def get_system_search_section(
     try:
         page = requests.get(helpers.get_search_url(search_selection))
         soup: BeautifulSoup = BeautifulSoup(page.content, 'html.parser')
-        result = soup.find(
-            'table', {'class': 'rounded centered cellpadding1 hovertable'})
-        for j in result.contents:
-            if j != '\n':
-                new_soup: BeautifulSoup = BeautifulSoup(str(j), 'html.parser')
-                odd = new_soup.find(attrs={'class': 'odd'})
-                even = new_soup.find(attrs={'class': 'even'})
-                if odd is not None:
-                    result_soup: BeautifulSoup = BeautifulSoup(
-                        str(odd.contents[0]), 'html.parser')
-                    result = result_soup.find('a', href=True)
-                    name = result.contents[0]
-                    result = result['href']
-                    rom = models.ROM(name, result)
-                    roms.append(rom)
-                    odd = None
-                if even is not None:
-                    result_soup = BeautifulSoup(str(even.contents[0]),
-                                                'html.parser')
-                    result = result_soup.find('a', href=True)
-                    name = result.contents[0]
-                    result = result['href']
-                    rom = models.ROM(name, result)
-                    roms.append(rom)
-                    even = None
+        table = soup.find('table', {'class': 'rounded centered cellpadding1 hovertable striped'})
+        rows = table.select('tr')
+
+        for row in rows:
+            title_link = row.select_one('td[style="width:auto"] > a[href*="/vault/"]')
+
+            if title_link:
+                rom_title = title_link.text
+                rom_uri = title_link['href']
+
+                rom = models.ROM(rom_title, rom_uri)
+                roms.append(rom)
     except BaseException:
         e = sys.exc_info()[0]
         print('Failed on system search section')
@@ -222,39 +196,20 @@ def get_general_search_section(
     try:
         page = requests.get(helpers.get_search_url(search_selection))
         soup: BeautifulSoup = BeautifulSoup(page.content, 'html.parser')
-        result = soup.find(
-            'table', {'class': 'rounded centered cellpadding1 hovertable'})
-        for j in result.contents:
-            if j != '\n':
-                new_soup: BeautifulSoup = BeautifulSoup(str(j), 'html.parser')
-                odd = new_soup.find(attrs={'class': 'odd'})
-                even = new_soup.find(attrs={'class': 'even'})
-                if odd is not None:
-                    system_result_soup: BeautifulSoup = BeautifulSoup(
-                        str(odd.contents[0]), 'html.parser')
-                    name_result_soup: BeautifulSoup = BeautifulSoup(
-                        str(odd.contents[1]), 'html.parser')
-                    system_result = system_result_soup.find('td')
-                    system = system_result.contents[0]
-                    name_result = name_result_soup.find('a', href=True)
-                    name = name_result.contents[0]
-                    game_id = name_result['href']
-                    rom = models.ROM(name, game_id, system)
-                    roms.append(rom)
-                    odd = None
-                if even is not None:
-                    system_result_soup: BeautifulSoup = BeautifulSoup(
-                        str(even.contents[0]), 'html.parser')
-                    name_result_soup: BeautifulSoup = BeautifulSoup(
-                        str(even.contents[1]), 'html.parser')
-                    system_result = system_result_soup.find('td')
-                    system = system_result.contents[0]
-                    name_result = name_result_soup.find('a', href=True)
-                    name = name_result.contents[0]
-                    game_id = name_result['href']
-                    rom = models.ROM(name, game_id, system)
-                    roms.append(rom)
-                    even = None
+        table = soup.find('table', {'class': 'rounded centered cellpadding1 hovertable striped'})
+        rows = table.find_all('tr')
+
+        for row in rows[1:]: # skip the header row
+            cols = row.find_all('td')
+
+            if len(cols) >= 4:
+                rom_platform = cols[0].text.strip()
+                title_link = cols[1].find('a', href=True)
+                rom_title= title_link.text.strip()
+                rom_uri = title_link['href']
+
+                rom = models.ROM(rom_title, rom_uri, rom_platform)
+                roms.append(rom)
     except BaseException:
         e = sys.exc_info()[0]
         print('Failed getting general search section')
